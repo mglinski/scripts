@@ -1,13 +1,13 @@
-#! /bin/sh
+#!/usr/bin/env bash
 
-sudo apt-get install transmission-daemon
 
 echo "Supply a port for RPC to use: "
-read RPC_PORT; echo
+read RPC_PORT; echo ; 
 
 echo "Supply a password for RPC: "
-read -s RPC_PASS; echo
+read -s RPC_PASS; echo ;
 
+sudo apt-get install transmission-daemon
 
 sudo cat > /etc/transmission-daemon/settings.json <<ZOA
 {
@@ -35,7 +35,7 @@ sudo cat > /etc/transmission-daemon/settings.json <<ZOA
     "incomplete-dir": "/var/lib/transmission-daemon/incomplete-downloads",
     "incomplete-dir-enabled": true,
     "lpd-enabled": false,
-    "max-peers-global": 200,
+    "max-peers-global": 500,
     "message-level": 1,
     "peer-congestion-algorithm": "",
     "peer-id-ttl-hours": 6,
@@ -83,10 +83,8 @@ sudo cat > /etc/transmission-daemon/settings.json <<ZOA
 }
 ZOA
 
-# pull in new settings file and restart
-sudo invoke-rc.d transmission-daemon reload
-sudo systemctl enable transmission-daemon
-sudo systemctl restart transmission-daemon
+invoke-rc.d transmission-daemon reload
+systemctl restart transmission-daemon
 
-RPC_PASS=
 RPC_PORT=
+RPC_PASS=
