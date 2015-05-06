@@ -83,8 +83,10 @@ sudo cat > /etc/transmission-daemon/settings.json <<ZOA
 }
 ZOA
 
-invoke-rc.d transmission-daemon reload
-systemctl restart transmission-daemon
+# save config and restart
+sudo invoke-rc.d transmission-daemon reload
+sudo systemctl restart transmission-daemon
 
+# reset vars
 RPC_PORT=
 RPC_PASS=
