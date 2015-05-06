@@ -77,11 +77,15 @@ echo "deb http://packages.dotdeb.org jessie all
 deb-src http://packages.dotdeb.org jessie all" > /etc/apt/sources.list.d/dotdeb.list
 echo "deb http://packages.elasticsearch.org/elasticsearch/1.5/debian stable main" > /etc/apt/sources.list.d/elasticsearch.list
 echo "deb http://apt.postgresql.org/pub/repos/apt/ jessie-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu vivid main" | tee /etc/apt/sources.list.d/webupd8team-java.list
+echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu vivid main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list
 
 # install pgp keys
 wget --quiet -O - http://www.dotdeb.org/dotdeb.gpg | apt-key add -
 wget --quiet -O - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | apt-key add -
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
+
 
 # system services
 SYSTEM_SERVICES=()
@@ -644,19 +648,10 @@ ZOF
 
 # PHP-FPM Socket: /var/run/php5-fpm.sock
 
-# Get Oracle JAVA 8 x86
-wget --no-cookies \
---no-check-certificate \
---header "Cookie: oraclelicense=accept-securebackup-cookie" \
-"http://download.oracle.com/otn-pub/java/jdk/8u45-b14/jdk-8u45-linux-x64.tar.gz" \
--O /tmp/jdk-8-linux-x64.tar.gz
-
-# install oracle java
-mkdir /opt/java-oracle
-tar -zxf /tmp/jdk-8-linux-x64.tar.gz -C /opt/java-oracle
-JHome=/opt/java-oracle/jdk1.8.0_45
-update-alternatives --install /usr/bin/java java ${JHome%*/}/bin/java 20000
-update-alternatives --install /usr/bin/javac javac ${JHome%*/}/bin/javac 20000
+# Install Oracle Java 8 (JRE,JDK)
+echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
+apt-get install oracle-java8-installer
+apt-get install oracle-java8-set-default
 
 # Install ElasticSearch 1.5
 apt-get install elasticsearch
