@@ -380,12 +380,6 @@ http {
     # Mitigate Poodle Attacks
     ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
 
-    server_tokens off;
-
-    sendfile on;
-    tcp_nopush  on;
-    tcp_nodelay off;
-
     # Cache
     add_header Cache-Control "public, max-age=3153600";
     client_max_body_size 64M;
