@@ -91,7 +91,7 @@ apt-get update
 apt-get upgrade -y
 
 # install needed base packages
-apt-get install -y build-essential git curl libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev
+apt-get install -y build-essential git curl sudo libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev
 
 # Get latest openresty version number
 curl -XGET https://github.com/openresty/ngx_openresty/tags | grep tag-name > /tmp/openresty_tag
