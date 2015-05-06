@@ -440,8 +440,6 @@ http {
     ## Compression
     gzip on;
     gzip_disable "msie6";
-
-    gzip              on;
     gzip_static       on;
     gzip_buffers      16 8k;
     gzip_comp_level   9;
