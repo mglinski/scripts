@@ -46,16 +46,6 @@ else
     read POST_UPDATE ; echo
 fi
 
-echo "Would you like to change root password? [y/n]"
-read CHANGE_ROOT ; echo
-
-if [ "$CHANGE_ROOT" == "y" ]; then
-    echo "Please enter the password to change it to"
-    read -s ROOT_PASS ; echo
-    echo -e "$ROOT_PASS" | ( passwd --stdin root )
-    ROOT_PASS=
-fi
-
 echo "Configure hostname? [y/n]"
 read NEW_HOSTNAME ; echo
 
