@@ -46,7 +46,7 @@ mkdir -p /www/$HOSTNAME_URI/{etc,ssl,logs,public,data,tmp}
 # /www/*/tmp/*              Site Specific TMP folder
 
 # Install EveSpark Nginx Conf File
-cat > /www/${HOSTNAME_URI}/etc/nginx.conf <<"ZOA"
+cat > /www/${HOSTNAME_URI}/etc/nginx.conf <<ZOA
 server {
     listen                          80;
     server_name                     www.${HOSTNAME_URI} ${HOSTNAME_URI};
