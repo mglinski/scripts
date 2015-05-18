@@ -6,13 +6,13 @@ Some of my system install scripts, mainly for debian. More will prolly be added 
 
 Includes system setup scriptes for installing this software stack in debian servers using active and popular repos wherever possible:
 
-* (http://openresty.org/)[Openresty] (latest) [Nginx custom configuration with LUA scripting capabilities]
-* (http://php.net)[PHP] (latest, 5.6) [Popular web scripting/programming language, php-fpm]
-* (http://www.postgresql.org/)[PostgreSql] (9.4.*) [SQL Database Server]
-* (http://redis.io)[Redis] (2.4.x) [KVS Database with helpful datatypes and functionality]
-* (https://www.elastic.co/products/elasticsearch)[ElasticSearch] [FullText Supported Document Index and Warehouse]
-* (http://memcached.org/)[Memcached] (1.4.x) [In Memory Data Blob cache]
-* (https://www.oracle.com/java/index.html)[Oracle Java] (v8, latest update) [Jaa Programming Language, needed for ElasticSearch]
+* [Openresty](http://openresty.org/) (latest) [Nginx custom configuration with LUA scripting capabilities]
+* [PHP](http://php.net) (latest, 5.6) [Popular web scripting/programming language, php-fpm]
+* [PostgreSql](http://www.postgresql.org/) (9.4.*) [SQL Database Server]
+* [Redis](http://redis.io) (2.4.x) [KVS Database with helpful datatypes and functionality]
+* [ElasticSearch](https://www.elastic.co/products/elasticsearch) [FullText Supported Document Index and Warehouse]
+* [Memcached](http://memcached.org/) (1.4.x) [In Memory Data Blob cache]
+* [Oracle Java](https://www.oracle.com/java/index.html) (v8, latest update) [Jaa Programming Language, needed for ElasticSearch]
 
 Some platform specific notes below:
 
