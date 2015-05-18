@@ -133,7 +133,9 @@ echo "  Install Complete!  "
 echo "*********************"
 
 echo "The host is installed and ready to activate. Once your ssl cert is issued and in place, you will need to run the following command to turn on the host in nginx:"
-echo "mv nginx.conf.off nginx.conf"
+echo "$ mv nginx.conf.off nginx.conf"
+echo ""
+echo ""
 
 # exit clean
 exit 0
