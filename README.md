@@ -24,7 +24,7 @@ Some platform specific notes below:
 #### 7 (Wheezy)
 
 * Includes init script for openresty
-* Needs generic changes backported from the v8 script
+* [TODO] Needs generic changes backported from the v8 script
 
 ## License 
 
