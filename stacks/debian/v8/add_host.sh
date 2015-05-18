@@ -46,7 +46,7 @@ mkdir -p /www/$HOSTNAME_URI/{etc,ssl,logs,public,data,tmp}
 # /www/*/tmp/*              Site Specific TMP folder
 
 # Install EveSpark Nginx Conf File
-cat > /www/${HOSTNAME_URI}/etc/nginx.conf <<ZOA
+cat > /www/${HOSTNAME_URI}/etc/nginx.conf.off <<ZOA
 server {
     listen                          80;
     server_name                     www.${HOSTNAME_URI} ${HOSTNAME_URI};
@@ -110,11 +110,16 @@ echo "<?php phpinfo();" > /www/${HOSTNAME_URI}/public/index.php
 
 # setup basic ssl stuff
 cd /www/${HOSTNAME_URI}/ssl
+
+# download StartSSL SHA-2 CA and Intermediary Certs
+wget -O - http://www.startssl.com/certs/class1/sha2/pem/sub.class1.server.sha2.ca.pem >> base.pem
+wget -O - http://www.startssl.com/certs/ca-sha2.pem >> base.pem
+
+# Generate CSR for this domain
 openssl req -sha256 -out ${HOSTNAME_URI}.csr -new -newkey rsa:4096 -nodes -keyout ${HOSTNAME_URI}.key
 
 # fix permissions for nginx + php-fpm
 chown -R openresty /www/${HOSTNAME_URI}
-# service openresty restart
 
 echo "*********************"
 echo "  Generating DHPARAM File, this will take a while  "
@@ -126,6 +131,9 @@ cd /www/${HOSTNAME_URI}
 echo "*********************"
 echo "  Install Complete!  "
 echo "*********************"
+
+echo "The host is installed and ready to activate. Once your ssl cert is issued and in place, you will need to run the following command to turn on the host in nginx:"
+echo "mv nginx.conf.off nginx.conf"
 
 # exit clean
 exit 0
