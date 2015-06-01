@@ -179,7 +179,7 @@ APT::Periodic::AutocleanInterval "7";
 SEC2
 
 # install needed base packages
-apt-get install -y build-essential git curl sudo libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev
+apt-get install -y build-essential git curl sudo libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev libgoogle-perftools-dev
 
 # Get latest openresty version number
 curl -XGET https://github.com/openresty/ngx_openresty/tags | grep tag-name > /tmp/openresty_tag
@@ -228,7 +228,7 @@ echo '/var/log/openresty/*.log {
 ' > /etc/logrotate.d/openresty
 
 # install other services
-apt-get install -y redis-server postgresql-9.4 postgresql-client-9.4 postgresql-contrib-9.4 mysql-client memcached nodejs
+apt-get install -y redis-server postgresql-9.4 postgresql-client-9.4 postgresql-contrib-9.4 mysql-client memcached nodejs google-perftools
 
 # Add new system services to processing list
 SYSTEM_SERVICES+=('postgresql')
@@ -255,6 +255,7 @@ fi
 
 # download and cd into openresty src code
 cd /root
+
 wget http://openresty.org/download/ngx_openresty-1.7.10.1.tar.gz
 tar xf ngx_openresty-1.7.10.1.tar.gz
 cd ngx_openresty-1.7.10.1
@@ -263,11 +264,12 @@ cd ngx_openresty-1.7.10.1
 curl -L -o /tmp/ngx_pagespeed_config "https://raw.githubusercontent.com/pagespeed/ngx_pagespeed/master/config"
 cat /tmp/ngx_pagespeed_config | grep "dl.google.com" > /tmp/nps_ver && sed -i 's/gz\"/gz/g' /tmp/nps_ver
 PSOL="`cat /tmp/nps_ver | awk '{printf $5}'`" && rm -f /tmp/{ngx_pagespeed_config,nps_ver}
+PSOL_VERSION=`echo $PSOL | sed "s/^.*psol\/\([0-9.]*\)\.tar\.gz/\1/"`
 
 # Google Page Speed
 git clone https://github.com/pagespeed/ngx_pagespeed.git
-cd ngx_pagespeed && curl -LO "$PSOL" && mod_pagespeed_dir="`pwd`/psol/include"
-tar xzvf *.tar.gz && cd ..
+cd ngx_pagespeed && git checkout release-${PSOL_VERSION}-beta && curl -LO "$PSOL" && mod_pagespeed_dir="`pwd`/psol/include"
+tar xzvf *.tar.gz && rm -rf ./*.tar.gz && cd ..
 
 # awesome openresty vars
 OPENRESTY_CACHE_PREFIX=/var/cache/openresty
@@ -280,7 +282,7 @@ chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
 # Configure OpenResty
 ./configure \
     --with-ipv6 \
-    --prefix=/etc/openresty/ \
+    --prefix=/etc/openresty \
     --sbin-path=/usr/sbin/openresty \
     --conf-path=/etc/openresty/openresty.conf \
     --error-log-path=$OPENRESTY_LOG_PREFIX/error.log \
@@ -298,12 +300,15 @@ chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
     --with-file-aio \
     --with-ipv6 \
     --with-luajit \
+    --with-mail \
+    --with-http_spdy_module \
     --with-http_realip_module \
     --with-http_addition_module \
     --with-http_xslt_module \
     --with-http_image_filter_module \
     --with-http_geoip_module \
     --with-http_sub_module \
+    --with-http_mp4_module \
     --with-http_flv_module \
     --with-http_iconv_module \
     --with-http_gzip_static_module \
@@ -312,7 +317,14 @@ chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
     --with-http_degradation_module \
     --with-http_stub_status_module \
     --with-http_perl_module \
-    --with-pcre --with-pcre-jit --with-md5-asm --with-sha1-asm 
+    --with-http_ssl_module \
+    --with-google_perftools_module \
+    --with-pcre \
+    --with-pcre-jit \
+    --with-md5-asm \
+    --with-md5=/usr/include \
+    --with-sha1-asm \
+    --with-sha1=/usr/include
 
 # Install OpenResty
 make && make install
@@ -437,15 +449,21 @@ fastcgi_param   HTTP_EVE_SHIPTYPEID         $http_eve_shiptypeid;
 fastcgi_param   HTTP_EVE_SHIPTYPENAME       $http_eve_shiptypename;
 ZOD
 
-
-
 # Set Openresty main config file
 cat > /etc/openresty/openresty.conf <<"ZOE"
 
+# main settings
 user  www-data;
 worker_processes  auto;
 worker_rlimit_nofile 7000000;
 
+# PCRE JIT compiler for regex
+pcre_jit                 on;
+
+# FileRead Threadpool
+# thread_pool mainpool threads=632 max_queue=65536; # added in 1.7.11
+
+# Main event loop
 events {
     use epoll;
     worker_connections  10240;
@@ -516,7 +534,7 @@ http {
 
     ## General Options
     sendfile                 on;
-    server_tokens           off;
+    server_tokens            off;
     recursive_error_pages    on;
     ignore_invalid_headers   on;
     server_name_in_redirect  off;
@@ -530,13 +548,12 @@ http {
     gzip_disable "msie6";
     gzip_static       on;
     gzip_buffers      16 8k;
-    gzip_comp_level   9;
+    gzip_comp_level   3;
     gzip_http_version 1.0;
     gzip_min_length   0;
     gzip_vary         on;
     gzip_proxied      any;
     gzip_types        text/plain text/css text/xml text/javascript application/x-javascript application/xml application/xml+rss application/json;
-
 
     # PHP Upstream
     include /etc/openresty/global/php_upstream.conf;
@@ -625,6 +642,7 @@ ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
 ssl_prefer_server_ciphers on;
 ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA;
 
+ssl_buffer_size 8k;
 ssl_session_timeout 10m;
 ssl_session_cache shared:SSL:256m;
 
