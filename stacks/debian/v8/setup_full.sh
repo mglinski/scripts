@@ -185,12 +185,7 @@ apt-get install -y build-essential git curl sudo libreadline6-dev ncurses-dev li
 curl -XGET https://github.com/openresty/ngx_openresty/tags | grep tag-name > /tmp/openresty_tag
 sed -e 's/<[^>]*>//g' /tmp/openresty_tag > /tmp/openresty_ver
 OPENRESTY_VER=`sed -e 's/      v//g' /tmp/openresty_ver | head -n 1` && rm -f /tmp/openresty_*
-google_pagespeed
 
-#install composer globally
-curl -sS https://getcomposer.org/installer | php
-chmod +x composer.phar
-copy composer.phar /usr/bin/composer
 
 # Install OpenResty init.d Script
 echo '[Unit]
@@ -340,6 +335,11 @@ apt-get install -y php5 php5-fpm php5-memcached php5-redis php5-imagick php5-geo
 
 # set systemd thing
 SYSTEM_SERVICES+=('php5-fpm')
+
+#install composer globally
+curl -sS https://getcomposer.org/installer | php
+chmod +x composer.phar
+copy composer.phar /usr/bin/composer
 
 # Install PHP OpCache Settings
 cat > /etc/php5/mods-available/opcache.ini <<"ZOA"
