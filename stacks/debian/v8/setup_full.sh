@@ -94,6 +94,9 @@ SYSTEM_SERVICES=()
 apt-get update
 apt-get upgrade -y
 
+# Download cacert.pem file from haxxe
+wget -O /etc/cacert.pem http://curl.haxx.se/ca/cacert.pem
+
 # enable unattended debian-security upgrades
 apt-get install -y unattended-upgrades bsd-mailx
 cat > /etc/apt/apt.conf.d/50unattended-upgrades <<SEC1
@@ -339,7 +342,7 @@ SYSTEM_SERVICES+=('php5-fpm')
 #install composer globally
 curl -sS https://getcomposer.org/installer | php
 chmod +x composer.phar
-copy composer.phar /usr/bin/composer
+cp composer.phar /usr/bin/composer
 
 # Install PHP OpCache Settings
 cat > /etc/php5/mods-available/opcache.ini <<"ZOA"
@@ -668,11 +671,11 @@ ZOF
 
 # Install Oracle Java 8 (JRE,JDK)
 echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
-apt-get install oracle-java8-installer
-apt-get install oracle-java8-set-default
+apt-get install -y oracle-java8-installer
+apt-get install -y oracle-java8-set-default
 
 # Install ElasticSearch 1.5
-apt-get install elasticsearch
+apt-get install -y elasticsearch
 SYSTEM_SERVICES+=('elasticsearch')
 
 # install iojs
