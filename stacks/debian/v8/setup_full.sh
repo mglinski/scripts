@@ -651,6 +651,7 @@ ssl_session_cache shared:SSL:256m;
 
 ssl_stapling on;
 ssl_stapling_verify on;
+ssl_session_tickets off;
 
 ## verify chain of trust of OCSP response using Root CA and Intermediate certs
 ssl_trusted_certificate /etc/cacert.pem;
