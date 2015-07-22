@@ -182,13 +182,7 @@ APT::Periodic::AutocleanInterval "7";
 SEC2
 
 # install needed base packages
-apt-get install -y build-essential git curl sudo libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev libgoogle-perftools-dev
-
-# Get latest openresty version number
-curl -XGET https://github.com/openresty/ngx_openresty/tags | grep tag-name > /tmp/openresty_tag
-sed -e 's/<[^>]*>//g' /tmp/openresty_tag > /tmp/openresty_ver
-OPENRESTY_VER=`sed -e 's/      v//g' /tmp/openresty_ver | head -n 1` && rm -f /tmp/openresty_*
-
+apt-get install -y build-essential git curl sudo libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev libgoogle-perftools-dev golang golang-dev cmake
 
 # Install OpenResty init.d Script
 echo '[Unit]
@@ -254,22 +248,36 @@ fi
 # download and cd into openresty src code
 cd /root
 
-wget http://openresty.org/download/ngx_openresty-1.7.10.2.tar.gz
-tar xf ngx_openresty-1.7.10.2.tar.gz
-cd ngx_openresty-1.7.10.2
+# Get latest openresty version number
+curl -XGET https://github.com/openresty/ngx_openresty/tags | grep tag-name > /tmp/openresty_tag
+sed -e 's/<[^>]*>//g' /tmp/openresty_tag > /tmp/openresty_ver
+OPENRESTY_VER=`sed -e 's/      v//g' /tmp/openresty_ver | head -n 1` && rm -f /tmp/openresty_*
 
-# install google pagespeed
+# Download latest version of openresty
+wget http://openresty.org/download/ngx_openresty-$OPENRESTY_VER.tar.gz
+tar xf ngx_openresty-$OPENRESTY_VER.tar.gz
+cd ngx_openresty-$OPENRESTY_VER
+
+# Download and install Google PSOL
 curl -L -o /tmp/ngx_pagespeed_config "https://raw.githubusercontent.com/pagespeed/ngx_pagespeed/master/config"
 cat /tmp/ngx_pagespeed_config | grep "dl.google.com" > /tmp/nps_ver && sed -i 's/gz\"/gz/g' /tmp/nps_ver
 PSOL="`cat /tmp/nps_ver | awk '{printf $5}'`" && rm -f /tmp/{ngx_pagespeed_config,nps_ver}
 PSOL_VERSION=`echo $PSOL | sed "s/^.*psol\/\([0-9.]*\)\.tar\.gz/\1/"`
 
-# Google Page Speed
+# Google mod_pagespeed
 git clone https://github.com/pagespeed/ngx_pagespeed.git
 cd ngx_pagespeed && git checkout release-${PSOL_VERSION}-beta && curl -LO "$PSOL" && mod_pagespeed_dir="`pwd`/psol/include"
 tar xzvf *.tar.gz && rm -rf ./*.tar.gz && cd ..
 
-# awesome openresty vars
+# Build BoringSSL and move the libraries around to make it compatable with nginx. https://calomel.org/nginx.html
+git clone https://boringssl.googlesource.com/boringssl boringssl
+cd boringssl
+mkdir build && cd build && cmake ../ && make && cd ..
+mkdir -p .openssl/lib && cd .openssl && ln -s ../include && cd ..
+cp build/crypto/libcrypto.a build/ssl/libssl.a .openssl/lib
+cd ../
+
+# openresty folders
 OPENRESTY_CACHE_PREFIX=/var/cache/openresty
 OPENRESTY_LOG_PREFIX=/var/log/openresty
 
@@ -292,6 +300,7 @@ chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
     --http-fastcgi-temp-path=$OPENRESTY_CACHE_PREFIX/fastcgi_temp \
     --http-uwsgi-temp-path=$OPENRESTY_CACHE_PREFIX/uwsgi_temp \
     --http-scgi-temp-path=$OPENRESTY_CACHE_PREFIX/scgi_temp \
+    --with-cc-opt="-g -O2 -fPIE -fstack-protector-all -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -I ./boringssl/.openssl/include/" --with-ld-opt="-Wl,-Bsymbolic-functions -Wl,-z,relro -L ./boringssl/.openssl/lib" \
     --user=openresty \
     --group=openresty \
     --add-module=ngx_pagespeed \
@@ -326,6 +335,7 @@ chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
 
 # Install OpenResty
 make && make install
+
 
 # add to system services
 SYSTEM_SERVICES+=('openresty')
@@ -458,6 +468,7 @@ cat > /etc/openresty/openresty.conf <<"ZOE"
 # main settings
 user  www-data;
 worker_processes  auto;
+worker_priority      15; 
 worker_rlimit_nofile 7000000;
 
 # PCRE JIT compiler for regex
@@ -525,6 +536,8 @@ http {
     keepalive_timeout     5 5;
     client_body_timeout   5;
     client_header_timeout 5;
+    spdy_keepalive_timeout 123s; # inactivity timeout after which the SPDY connection is closed
+    spdy_recv_timeout        4s; # timeout if nginx is currently expecting data from the client but nothing arrives
 
     # OpenResty
     variables_hash_max_size 4096;
