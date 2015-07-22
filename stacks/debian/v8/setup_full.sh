@@ -300,7 +300,8 @@ chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
     --http-fastcgi-temp-path=$OPENRESTY_CACHE_PREFIX/fastcgi_temp \
     --http-uwsgi-temp-path=$OPENRESTY_CACHE_PREFIX/uwsgi_temp \
     --http-scgi-temp-path=$OPENRESTY_CACHE_PREFIX/scgi_temp \
-    --with-cc-opt="-g -O2 -fPIE -fstack-protector-all -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -I ./boringssl/.openssl/include/" --with-ld-opt="-Wl,-Bsymbolic-functions -Wl,-z,relro -L ./boringssl/.openssl/lib" \
+    --with-cc-opt="-g -O2 -fPIE -fstack-protector-all -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -I ./boringssl/.openssl/include/" \
+    --with-ld-opt="-Wl,-Bsymbolic-functions -Wl,-z,relro -L ./boringssl/.openssl/lib" \
     --user=openresty \
     --group=openresty \
     --add-module=ngx_pagespeed \
@@ -336,8 +337,7 @@ chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
 # Install OpenResty
 make && make install
 
-
-# add to system services
+# add to system services loop
 SYSTEM_SERVICES+=('openresty')
 
 # back dat ass up
@@ -346,10 +346,10 @@ cd
 # Install PHP
 apt-get install -y php5 php5-fpm php5-memcached php5-redis php5-imagick php5-geoip php5-curl php5-dev php5-mcrypt php5-mysqlnd php5-pgsql php5-sqlite php5-gmp
 
-# set systemd thing
+# add to system services loop
 SYSTEM_SERVICES+=('php5-fpm')
 
-#install composer globally
+# Install composer globally
 curl -sS https://getcomposer.org/installer | php
 chmod +x composer.phar
 cp composer.phar /usr/bin/composer
@@ -371,7 +371,7 @@ opcache.fast_shutdown=1
 opcache.enable_cli=0
 ZOA
 
-# Install PHP.ini Settings
+# Set PHP.ini Settings
 cat >> /etc/php5/fpm/php.ini <<"ZOB"
 
 max_execution_time = 3000
