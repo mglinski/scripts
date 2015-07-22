@@ -479,6 +479,10 @@ http {
     add_header Cache-Control "public, max-age=3153600";
     client_max_body_size 64M;
     client_body_temp_path /var/cache/openresty 1 2;
+    open_file_cache           max=1000 inactive=2h;
+    open_file_cache_errors    on;
+    open_file_cache_min_uses  1;
+    open_file_cache_valid     1h;
 
     # Main access log
     access_log   off;
@@ -519,6 +523,11 @@ http {
     variables_hash_bucket_size 512;
     server_names_hash_bucket_size 64;
     types_hash_max_size 8192;
+    msie_padding              off;
+    server_name_in_redirect   off;
+
+    ## Request limits
+    limit_req_zone  $binary_remote_addr  zone=gulag:1m   rate=60r/m;
 
     # Header
     more_set_headers "Server: dabes";
