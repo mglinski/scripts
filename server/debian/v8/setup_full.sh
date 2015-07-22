@@ -3,15 +3,16 @@
 #######################
 # Full Stack Setup
 # Debian 8 (Jesse), using systemd
-# Openresty(1.7), PHP (5.6), PostgreSql(9.4), Redis(2.4), ElasticSearch(1.5), Memcached(1.4), Oracle Java 8(u45)
+# Openresty(1.7), PHP (5.6), PostgreSql(9.4), Redis(3.0), ElasticSearch(1.5), Memcached(1.4), Oracle Java 8
 #
 # Sites go in /www like this:
+# /www/site-fqdn/           Site Root Folder (site-fqdn: website.com)
 # /www/*/etc/nginx.conf     Site nginx conf file
-# /www/*/ssl/*              Site specific SSL files (private key, cert, etc)
-# /www/*/logs/              Site specific webserver logs
-# /www/*/public/*           Site web root folder
-# /www/*/data/*             Site specific misc data folder
-# /www/*/tmp/*              Site Specific TMP folder
+# /www/*/ssl/*              Site specific SSL files/secrets (private key, cert, etc)
+# /www/*/logs/              Site specific logs (nginx logs, app logs, etc)
+# /www/*/public/*           Site web root folder (default webroot, can be overwritten in etc/nginx.conf)
+# /www/*/data/*             Site specific misc data folder(sessions, locks, etc)
+# /www/*/tmp/*              Site specific tmp folder (scratch folder that can be written to freely)
 #######################
 
 echo "---------------------------"
@@ -56,7 +57,7 @@ if [ "$NEW_HOSTNAME" == "y" ] ; then
 	# backup original hosts file
 	cp /etc/hosts /etc/hosts.back
 
-	ORIG_HOSTNAME=`cat config.txt`
+	ORIG_HOSTNAME=`cat /etc/hostname`
 	sed -i '' -e  "s/$ORIG_HOSTNAME/HOSTNAME_URI/" /etc/hosts
 	cat ${HOSTNAME_URI} > /etc/hostname
 fi
@@ -72,7 +73,7 @@ else
 	exit 0
 fi
 
-# install new apt repo sources
+# Install new apt repo sources
 echo "deb http://packages.dotdeb.org jessie all 
 deb-src http://packages.dotdeb.org jessie all" > /etc/apt/sources.list.d/dotdeb.list
 echo "deb http://packages.elasticsearch.org/elasticsearch/1.5/debian stable main" > /etc/apt/sources.list.d/elasticsearch.list
@@ -80,24 +81,23 @@ echo "deb http://apt.postgresql.org/pub/repos/apt/ jessie-pgdg main" > /etc/apt/
 echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu vivid main" | tee /etc/apt/sources.list.d/webupd8team-java.list
 echo "deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu vivid main" | tee -a /etc/apt/sources.list.d/webupd8team-java.list
 
-# install pgp keys
+# Install Repo pgp keys
 wget --quiet -O - http://www.dotdeb.org/dotdeb.gpg | apt-key add -
 wget --quiet -O - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | apt-key add -
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
 
-
-# system services
+# Array of system services to enable after everything is done
 SYSTEM_SERVICES=()
 
-# initial system update
+# Initial system update and package upgrade
 apt-get update
 apt-get upgrade -y
 
 # Download cacert.pem file from haxxe
 wget -O /etc/cacert.pem http://curl.haxx.se/ca/cacert.pem
 
-# enable unattended debian-security upgrades
+# Enable unattended debian-security upgrades
 apt-get install -y unattended-upgrades bsd-mailx
 cat > /etc/apt/apt.conf.d/50unattended-upgrades <<SEC1
 // Automatically upgrade packages from these origin patterns
@@ -182,9 +182,9 @@ APT::Periodic::AutocleanInterval "7";
 SEC2
 
 # install needed base packages
-apt-get install -y build-essential git curl sudo libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev libgoogle-perftools-dev golang golang-dev cmake
+apt-get install -y build-essential git curl sudo logrotate libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev libgoogle-perftools-dev golang golang-dev cmake
 
-# Install OpenResty init.d Script
+# Install OpenResty systemd .service Script
 echo '[Unit]
 Description=OpenResty - high performance web server
 Documentation=http://openresty.org/
@@ -203,7 +203,7 @@ PrivateTmp=true
 WantedBy=multi-user.target
 ' > /lib/systemd/system/openresty.service
 
-# Install OpenResty logrotate script
+# Install OpenResty logrotate config
 echo '/var/log/openresty/*.log {
         daily
         missingok
@@ -232,7 +232,7 @@ if ! getent group openresty >/dev/null; then
    addgroup --system openresty >/dev/null
 fi
 
-# creating openresty user if he isn't already there
+# Creating openresty user if it does not exit
 if ! getent passwd openresty >/dev/null; then
     adduser \
         --system \
@@ -245,7 +245,7 @@ if ! getent passwd openresty >/dev/null; then
         openresty  >/dev/null
 fi
 
-# download and cd into openresty src code
+# Move into root home dir for downloads and building
 cd /root
 
 # Get latest openresty version number
@@ -254,15 +254,15 @@ sed -e 's/<[^>]*>//g' /tmp/openresty_tag > /tmp/openresty_ver
 OPENRESTY_VER=`sed -e 's/      v//g' /tmp/openresty_ver | head -n 1` && rm -f /tmp/openresty_*
 
 # Download latest version of openresty
-wget http://openresty.org/download/ngx_openresty-$OPENRESTY_VER.tar.gz
-tar xf ngx_openresty-$OPENRESTY_VER.tar.gz
-cd ngx_openresty-$OPENRESTY_VER
+wget http://openresty.org/download/ngx_openresty-${OPENRESTY_VER}.tar.gz
+tar xf ngx_openresty-${OPENRESTY_VER}.tar.gz
+cd ngx_openresty-${OPENRESTY_VER}
 
 # Download and install Google PSOL
 curl -L -o /tmp/ngx_pagespeed_config "https://raw.githubusercontent.com/pagespeed/ngx_pagespeed/master/config"
 cat /tmp/ngx_pagespeed_config | grep "dl.google.com" > /tmp/nps_ver && sed -i 's/gz\"/gz/g' /tmp/nps_ver
 PSOL="`cat /tmp/nps_ver | awk '{printf $5}'`" && rm -f /tmp/{ngx_pagespeed_config,nps_ver}
-PSOL_VERSION=`echo $PSOL | sed "s/^.*psol\/\([0-9.]*\)\.tar\.gz/\1/"`
+PSOL_VERSION=`echo ${PSOL} | sed "s/^.*psol\/\([0-9.]*\)\.tar\.gz/\1/"`
 
 # Google mod_pagespeed
 git clone https://github.com/pagespeed/ngx_pagespeed.git
@@ -282,8 +282,8 @@ OPENRESTY_CACHE_PREFIX=/var/cache/openresty
 OPENRESTY_LOG_PREFIX=/var/log/openresty
 
 # Make cache folders
-mkdir -p $OPENRESTY_CACHE_PREFIX/{client_temp,proxy_temp,fastcgi_temp,uwsgi_temp,scgi_temp} $OPENRESTY_LOG_PREFIX
-chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
+mkdir -p ${OPENRESTY_CACHE_PREFIX}/{client_temp,proxy_temp,fastcgi_temp,uwsgi_temp,scgi_temp} ${OPENRESTY_LOG_PREFIX}
+chown -R openresty:openresty ${OPENRESTY_CACHE_PREFIX} ${OPENRESTY_LOG_PREFIX}
 
 # Configure OpenResty
 ./configure \
@@ -291,15 +291,15 @@ chown -R openresty:openresty $OPENRESTY_CACHE_PREFIX $OPENRESTY_LOG_PREFIX
     --prefix=/etc/openresty \
     --sbin-path=/usr/sbin/openresty \
     --conf-path=/etc/openresty/openresty.conf \
-    --error-log-path=$OPENRESTY_LOG_PREFIX/error.log \
-    --http-log-path=$OPENRESTY_LOG_PREFIX/access.log \
+    --error-log-path=${OPENRESTY_LOG_PREFIX}/error.log \
+    --http-log-path=${OPENRESTY_LOG_PREFIX}/access.log \
     --pid-path=/var/run/openresty.pid \
     --lock-path=/var/run/openresty.lock \
-    --http-client-body-temp-path=$OPENRESTY_CACHE_PREFIX/client_temp \
-    --http-proxy-temp-path=$OPENRESTY_CACHE_PREFIX/proxy_temp \
-    --http-fastcgi-temp-path=$OPENRESTY_CACHE_PREFIX/fastcgi_temp \
-    --http-uwsgi-temp-path=$OPENRESTY_CACHE_PREFIX/uwsgi_temp \
-    --http-scgi-temp-path=$OPENRESTY_CACHE_PREFIX/scgi_temp \
+    --http-client-body-temp-path=${OPENRESTY_CACHE_PREFIX}/client_temp \
+    --http-proxy-temp-path=${OPENRESTY_CACHE_PREFIX}/proxy_temp \
+    --http-fastcgi-temp-path=${OPENRESTY_CACHE_PREFIX}/fastcgi_temp \
+    --http-uwsgi-temp-path=${OPENRESTY_CACHE_PREFIX}/uwsgi_temp \
+    --http-scgi-temp-path=${OPENRESTY_CACHE_PREFIX}/scgi_temp \
     --with-cc-opt="-g -O2 -fPIE -fstack-protector-all -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -I ./boringssl/.openssl/include/" \
     --with-ld-opt="-Wl,-Bsymbolic-functions -Wl,-z,relro -L ./boringssl/.openssl/lib" \
     --user=openresty \
@@ -437,31 +437,6 @@ fastcgi_intercept_errors on;
 #fastcgi_param  REDIRECT_STATUS    200;
 ZOC
 
-# Set Openresty fastcgi_eve file
-cat > /etc/openresty/fastcgi_eve <<"ZOD"
-
-fastcgi_param   HTTP_EVE_TRUSTED            $http_eve_trusted;
-fastcgi_param   HTTP_EVE_SERVERIP           $http_eve_serverip;
-fastcgi_param   HTTP_EVE_CHARNAME           $http_eve_charname;
-fastcgi_param   HTTP_EVE_CHARID             $http_eve_charid;
-fastcgi_param   HTTP_EVE_CORPNAME           $http_eve_corpname;
-fastcgi_param   HTTP_EVE_CORPID             $http_eve_corpid;
-fastcgi_param   HTTP_EVE_ALLIANCENAME       $http_eve_alliancename;
-fastcgi_param   HTTP_EVE_ALLIANCEID         $http_eve_allianceid;
-fastcgi_param   HTTP_EVE_REGIONNAME         $http_eve_regionname;
-fastcgi_param   HTTP_EVE_CONSTELLATIONNAME  $http_eve_constellationname;
-fastcgi_param   HTTP_EVE_SOLARSYSTEMNAME    $http_eve_solarsystemname;
-fastcgi_param   HTTP_EVE_STATIONNAME        $http_eve_stationname;
-fastcgi_param   HTTP_EVE_STATIONID          $http_eve_stationid;
-fastcgi_param   HTTP_EVE_CORPROLE           $http_eve_corprole;
-fastcgi_param   HTTP_EVE_SOLARSYSTEMID      $http_eve_solarsystemid;
-fastcgi_param   HTTP_EVE_WARFACTIONID       $http_eve_warfactionid;
-fastcgi_param   HTTP_EVE_SHIPID             $http_eve_shipid;
-fastcgi_param   HTTP_EVE_SHIPNAME           $http_eve_shipname;
-fastcgi_param   HTTP_EVE_SHIPTYPEID         $http_eve_shiptypeid;
-fastcgi_param   HTTP_EVE_SHIPTYPENAME       $http_eve_shiptypename;
-ZOD
-
 # Set Openresty main config file
 cat > /etc/openresty/openresty.conf <<"ZOE"
 
@@ -593,7 +568,7 @@ ZOE
 mkdir /etc/openresty/global/
 
 # Set Openresty global/locations.conf file
-cat > /etc/openresty/global/locations.conf <<"ZOF"
+cat > /etc/openresty/global/locations.conf <<"ZOG"
 # setup some helper location blocks
 location = /favicon.ico {
     log_not_found off;
@@ -617,13 +592,13 @@ location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
     expires 24h;
     log_not_found off;
 }
-ZOF
+ZOG
 
 # Set Openresty global/logging_remote.conf file
-cat > /etc/openresty/global/logging_remote.conf <<"ZOF"
+cat > /etc/openresty/global/logging_remote.conf <<"ZOH"
 access_log syslog:server=unix:/dev/log,facility=local7,tag=nginx,severity=info main;
 error_log syslog:server=unix:/dev/log,facility=local7,tag=nginx,severity=error;
-ZOF
+ZOH
 
 # Set Openresty global/php_upstream.conf file
 cat > /etc/openresty/global/php_upstream.conf <<"ZOF"
@@ -634,7 +609,7 @@ upstream php {
 ZOF
 
 # Set Openresty global/php.conf file
-cat > /etc/openresty/global/php.conf <<"ZOF"
+cat > /etc/openresty/global/php.conf <<"ZOI"
 location ~ [^/]\.php(/|$) {
     try_files $uri =404;
 
@@ -644,16 +619,16 @@ location ~ [^/]\.php(/|$) {
     }
 
     include fastcgi_params;
-    include fastcgi_eve;
+    #include fastcgi_eve;
 
     fastcgi_index index.php;
     fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
     fastcgi_pass php;
 }
-ZOF
+ZOI
 
 # Set Openresty global/ssl.conf file
-cat > /etc/openresty/global/ssl.conf <<"ZOF"
+cat > /etc/openresty/global/ssl.conf <<"ZOJ"
 ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
 ssl_prefer_server_ciphers on;
 #ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA; # OpenSSL Cyphers
@@ -680,7 +655,7 @@ add_header X-Content-Type-Options nosniff;
 add_header X-XSS-Protection "1; mode=block";
 add_header X-Content-Type-Options "nosniff";
 add_header X-Download-Options "noopen";
-ZOF
+ZOJ
 
 # PHP-FPM Socket: /var/run/php5-fpm.sock
 

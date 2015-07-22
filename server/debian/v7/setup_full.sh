@@ -14,7 +14,7 @@
 # /www/*/tmp/*              Site Specific TMP folder
 #######################
 
-
+# Install Extra Repos
 echo "
 deb http://packages.dotdeb.org wheezy all
 deb-src http://packages.dotdeb.org wheezy all
@@ -22,18 +22,19 @@ deb-src http://packages.dotdeb.org wheezy all
 deb http://packages.dotdeb.org wheezy-php56 all
 deb-src http://packages.dotdeb.org wheezy-php56 all
 " >> /etc/apt/sources.list.d/php.list
-
 echo "deb http://packages.elasticsearch.org/elasticsearch/1.0/debian stable main" > /etc/apt/sources.list.d/elasticsearch.list
-
 echo "deb http://apt.postgresql.org/pub/repos/apt/ wheezy-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 
+# Install Repo GPG Keys
 wget --quiet -O - http://www.dotdeb.org/dotdeb.gpg | apt-key add -
 wget --quiet -O - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | apt-key add -
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
+# System APT update and upgrade to get most recent packages
 apt-get update
 apt-get upgrade
 
+# Install needed packages
 apt-get install -y git curl build-essential libreadline6-dev ncurses-dev libpcre++-dev libssl-dev libgeoip-dev libxml2-dev libxslt-dev libgd2-xpm-dev libperl-dev zlib1g-dev libpcre3 libpcre3-dev
 
 # Get latest openresty version number
@@ -42,7 +43,7 @@ sed -e 's/<[^>]*>//g' /tmp/openresty_tag > /tmp/openresty_ver
 OPENRESTY_VER=`sed -e 's/      v//g' /tmp/openresty_ver | head -n 1` && rm -f /tmp/openresty_*
 google_pagespeed
 
-#install composer globally
+# Install composer globally
 curl -sS https://getcomposer.org/installer | php
 chmod +x composer.phar
 copy composer.phar /usr/bin/composer
