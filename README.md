@@ -1,6 +1,6 @@
 ## System Scripts
 
-Some of my system install scripts, mainly for debian. More will prolly be added soon.
+Some of my system install scripts, mainly for Debian. Updated semi-frequently.
 
 ### Debian 
 
@@ -22,6 +22,7 @@ Some platform specific notes below:
 * Full support for systemd
 * Openresty built with Google Pagespeed and BoringSSL
 * Openresty compiler options to enable ASLR, -O2 Optimizations, stack protection and Linker protection
+
 #### 7 (Wheezy)
 
 * Includes init script for openresty
