@@ -254,9 +254,9 @@ fi
 # download and cd into openresty src code
 cd /root
 
-wget http://openresty.org/download/ngx_openresty-1.7.10.1.tar.gz
-tar xf ngx_openresty-1.7.10.1.tar.gz
-cd ngx_openresty-1.7.10.1
+wget http://openresty.org/download/ngx_openresty-1.7.10.2.tar.gz
+tar xf ngx_openresty-1.7.10.2.tar.gz
+cd ngx_openresty-1.7.10.2
 
 # install google pagespeed
 curl -L -o /tmp/ngx_pagespeed_config "https://raw.githubusercontent.com/pagespeed/ngx_pagespeed/master/config"
