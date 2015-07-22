@@ -23,7 +23,7 @@ Some platform specific notes below:
 * Openresty built with Google Pagespeed and BoringSSL
 * Openresty compiler options to enable ASLR, -O2 Optimizations, stack protection and Linker protection
 
-#### 7 (Wheezy)
+#### 7 (Wheezy) _Deprecated_
 
 * Includes init script for openresty
 * [TODO] Needs generic changes backported from the v8 script
