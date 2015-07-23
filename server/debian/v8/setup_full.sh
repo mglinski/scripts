@@ -439,30 +439,35 @@ ZOC
 
 # Set Openresty main config file
 cat > /etc/openresty/openresty.conf <<"ZOE"
+############################
+##    Openresty v1.7.x    ##
+##     ~All~ Features     ##
+############################
 
-# main settings
+##/ Main thread settings \##
 user  www-data;
 worker_processes  auto;
 worker_priority      15; 
 worker_rlimit_nofile 7000000;
 
-# PCRE JIT compiler for regex
+##/ PCRE JIT compiler for regex \##
 pcre_jit                 on;
 
-# FileRead Threadpool
+##/ FileRead Threadpool \##
 # thread_pool mainpool threads=632 max_queue=65536; # added in 1.7.11
 
-# Main event loop
+## Main event loop \##
 events {
     use epoll;
     worker_connections  10240;
 }
 
+##/ Global HTTP Options \##
 http {
     include       mime.types;
     default_type  application/octet-stream;
 
-    #GeoIP2 
+    ##/ GeoIP2  \##
     #geoip2 /etc/openresty/geoip2/GeoLite2-Country.mmdb {
     #     $geoip_country_code default=US country iso_code;
     #    $geoip_country_name country names en;
@@ -472,104 +477,75 @@ http {
     #    $geoip_city_name default=London city names en;
     #}
 
-    # Mitigate Poodle Attacks
-    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ##/ SSL: Globally Mitigate Poodle Attacks \##
+    ssl_protocols                     TLSv1 TLSv1.1 TLSv1.2;
 
-    # Cache
-    add_header Cache-Control "public, max-age=3153600";
-    client_max_body_size 64M;
-    client_body_temp_path /var/cache/openresty 1 2;
-    open_file_cache           max=1000 inactive=2h;
-    open_file_cache_errors    on;
-    open_file_cache_min_uses  1;
-    open_file_cache_valid     1h;
+    ##/ Cache \##
+    add_header                        Cache-Control "public, max-age=3153600";
+    client_max_body_size              64M;
+    client_body_temp_path             /var/cache/openresty 1 2;
+    open_file_cache                   max=1000 inactive=2h;
+    open_file_cache_errors            on;
+    open_file_cache_min_uses          1;
+    open_file_cache_valid             1h;
 
-    # Main access log
-    access_log   off;
+    ##/ Timeouts \##
+    send_timeout                      5;
+    keepalive_timeout                 5 5;
+    client_body_timeout               5;
+    client_header_timeout             5;
+    spdy_keepalive_timeout            123s; # inactivity timeout after which the SPDY connection is closed
+    spdy_recv_timeout                 4s; # timeout if nginx is currently expecting data from the client but nothing arrives
 
-    # Log directives
-    log_format main '$remote_addr "$remote_user" [$time_local] '
-        '"$http_host" [$status] "$request" "$body_bytes_sent" "$http_referer" '
-        '"$http_user_agent" "$http_x_forwarded_for" "$request_time" "$gzip_ratio"';
+    ##/ OpenResty \##
+    variables_hash_max_size           4096;
+    variables_hash_bucket_size        512;
+    server_names_hash_bucket_size     64;
+    types_hash_max_size               8192;
+    msie_padding                      off;
+    server_name_in_redirect           off;
 
-    log_format json_format '{ "@time": "$time_iso8601", '
-                        '"@fields": { '
-                        '"host": "$remote_addr", '
-                        '"user": "$remote_user", '
-                        '"status": "$status", '
-                        '"request": "$request", '
-                        '"size": "$body_bytes_sent", '
-                        '"user-agent": "$http_user_agent", '
-                        '"forwarded_for": "$http_x_forwarded_for", '
-                        '"request_time": "$request_time", '
-                        '"bytes_sent": "$body_bytes_sent", '
-                        '"referrer": "$http_referer" } }';
+    ##/ Request limits \##
+    limit_req_zone                    $binary_remote_addr  zone=gulag:1m   rate=60r/m;
 
-    log_format main_eve '$remote_addr "$remote_user" [$time_local] '
-        '"$http_host" [$status] "$request" "$body_bytes_sent" "$http_referer" '
-        '"$http_user_agent" "$http_x_forwarded_for" "$request_time" "$gzip_ratio"'
-        '"$http_eve_charname" "$http_eve_charid" "$http_eve_corpid" "$http_eve_solarsystemid" "$http_eve_stationid" ';
+    ##/ Header \##
+    more_set_headers                  "Server: dabes 9001";
 
-    ## Timeouts
-    send_timeout          5;
-    keepalive_timeout     5 5;
-    client_body_timeout   5;
-    client_header_timeout 5;
-    spdy_keepalive_timeout 123s; # inactivity timeout after which the SPDY connection is closed
-    spdy_recv_timeout        4s; # timeout if nginx is currently expecting data from the client but nothing arrives
+    ##/ General Options \##
+    sendfile                          on;
+    server_tokens                     off;
+    recursive_error_pages             on;
+    ignore_invalid_headers            on;
+    server_name_in_redirect           off;
 
-    # OpenResty
-    variables_hash_max_size 4096;
-    variables_hash_bucket_size 512;
-    server_names_hash_bucket_size 64;
-    types_hash_max_size 8192;
-    msie_padding              off;
-    server_name_in_redirect   off;
+    ##/ TCP options \##
+    tcp_nodelay                       on;
+    tcp_nopush                        on;
 
-    ## Request limits
-    limit_req_zone  $binary_remote_addr  zone=gulag:1m   rate=60r/m;
+    ##/ Compression \##
+    gzip                              on;
+    gzip_disable                      "msie6";
+    gzip_static                       on;
+    gzip_buffers                      16 8k;
+    gzip_comp_level                   3;
+    gzip_http_version                 1.0;
+    gzip_min_length                   0;
+    gzip_vary                         on;
+    gzip_proxied                      any;
+    gzip_types                        text/plain text/css text/xml text/javascript application/x-javascript application/xml application/xml+rss application/json;
 
-    # Header
-    more_set_headers "Server: dabes";
+    # Default site access turned off \##
+    include   /etc/openresty/global/default_site.conf;
 
-    ## General Options
-    sendfile                 on;
-    server_tokens            off;
-    recursive_error_pages    on;
-    ignore_invalid_headers   on;
-    server_name_in_redirect  off;
+    # PHP Upstream \##
+    include   /etc/openresty/global/php_upstream.conf;
 
-    ## TCP options
-    tcp_nodelay on;
-    tcp_nopush  on;
+    # logging directives \##
+    include   /etc/openresty/global/log_directives.conf
 
-    ## Compression
-    gzip on;
-    gzip_disable "msie6";
-    gzip_static       on;
-    gzip_buffers      16 8k;
-    gzip_comp_level   3;
-    gzip_http_version 1.0;
-    gzip_min_length   0;
-    gzip_vary         on;
-    gzip_proxied      any;
-    gzip_types        text/plain text/css text/xml text/javascript application/x-javascript application/xml application/xml+rss application/json;
-
-    # PHP Upstream
-    include /etc/openresty/global/php_upstream.conf;
-
-    # default deny server
-    server {
-        listen *:80 default;
-        server_name _;
-
-        location / {
-            deny all;
-        }
-    }
-
-    include /home/*/etc/nginx.conf;
-    include /www/*/etc/nginx.conf;
+    # Load application site config files dynamicly \##
+    include   /home/*/etc/nginx.conf;
+    include   /www/*/etc/nginx.conf;
 }
 ZOE
 
@@ -610,12 +586,54 @@ error_log syslog:server=unix:/dev/log,facility=local7,tag=nginx,severity=error;
 ZOH
 
 # Set Openresty global/php_upstream.conf file
-cat > /etc/openresty/global/php_upstream.conf <<"ZOF"
+cat > /etc/openresty/global/php_upstream.conf <<"ZOK"
 # PHP Upstream
 upstream php { 
     server unix:/var/run/php5-fpm.sock;
 }
-ZOF
+ZOK
+
+# Set Openresty global/log_direcives.conf file
+cat > /etc/openresty/global/log_direcives.conf <<"ZOL"
+# Main access log
+access_log   off;
+
+# Log directives
+log_format main '$remote_addr "$remote_user" [$time_local] '
+    '"$http_host" [$status] "$request" "$body_bytes_sent" "$http_referer" '
+    '"$http_user_agent" "$http_x_forwarded_for" "$request_time" "$gzip_ratio"';
+
+log_format json_format '{ "@time": "$time_iso8601", '
+                    '"@fields": { '
+                    '"host": "$remote_addr", '
+                    '"user": "$remote_user", '
+                    '"status": "$status", '
+                    '"request": "$request", '
+                    '"size": "$body_bytes_sent", '
+                    '"user-agent": "$http_user_agent", '
+                    '"forwarded_for": "$http_x_forwarded_for", '
+                    '"request_time": "$request_time", '
+                    '"bytes_sent": "$body_bytes_sent", '
+                    '"referrer": "$http_referer" } }';
+
+log_format main_eve '$remote_addr "$remote_user" [$time_local] '
+    '"$http_host" [$status] "$request" "$body_bytes_sent" "$http_referer" '
+    '"$http_user_agent" "$http_x_forwarded_for" "$request_time" "$gzip_ratio"'
+    '"$http_eve_charname" "$http_eve_charid" "$http_eve_corpid" "$http_eve_solarsystemid" "$http_eve_stationid" ';
+ZOL
+
+# Set Openresty global/default_site.conf file
+cat > /etc/openresty/global/default_site.conf <<"ZOM"
+# default deny server
+server {
+    listen  *:80 default;
+    server_name _;
+
+    location / {
+        deny all;
+    }
+}
+ZOM
 
 # Set Openresty global/php.conf file
 cat > /etc/openresty/global/php.conf <<"ZOI"
@@ -643,27 +661,27 @@ ssl_prefer_server_ciphers on;
 #ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA; # OpenSSL Cyphers
 ssl_ciphers [ECDHE-ECDSA-AES128-GCM-SHA256|ECDHE-ECDSA-CHACHA20-POLY1305]:[ECDHE-RSA-AES128-GCM-SHA256|ECDHE-RSA-CHACHA20-POLY1305]:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384; # BoringSSL Cyphers
 
-ssl_buffer_size 8k;
-ssl_session_timeout 10m;
-ssl_session_cache shared:SSL:256m;
+ssl_buffer_size                 8k;
+ssl_session_timeout             10m;
+ssl_session_cache               shared:SSL:256m;
 
-ssl_stapling on;
-ssl_stapling_verify on;
-ssl_session_tickets off;
+ssl_stapling                    on;
+ssl_stapling_verify             on;
+ssl_session_tickets             off;
 
 ## verify chain of trust of OCSP response using Root CA and Intermediate certs
-ssl_trusted_certificate /etc/cacert.pem;
+ssl_trusted_certificate         /etc/cacert.pem;
 
-resolver 8.8.8.8 8.8.4.4 valid=300s;
-resolver_timeout 10s;
+resolver                        8.8.8.8 8.8.4.4 valid=300s;
+resolver_timeout                10s;
 
 # Security Headers
-add_header Strict-Transport-Security max-age=15768000;
-add_header X-Frame-Options DENY;
-add_header X-Content-Type-Options nosniff;
-add_header X-XSS-Protection "1; mode=block";
-add_header X-Content-Type-Options "nosniff";
-add_header X-Download-Options "noopen";
+add_header                      Strict-Transport-Security max-age=15768000;
+add_header                      X-Frame-Options DENY;
+add_header                      X-Content-Type-Options nosniff;
+add_header                      X-XSS-Protection "1; mode=block";
+add_header                      X-Content-Type-Options "nosniff";
+add_header                      X-Download-Options "noopen";
 ZOJ
 
 # PHP-FPM Socket: /var/run/php5-fpm.sock
